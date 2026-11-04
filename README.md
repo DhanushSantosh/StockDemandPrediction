@@ -1,6 +1,6 @@
 # Stock Demand Prediction
 
-A standalone Statistics and Data Analytics mini project for weekly product sales prediction. The primary experiment uses the real [UCI Online Retail II dataset](https://archive.ics.uci.edu/dataset/502/online+retail+ii). A second, clearly synthetic grocery dataset demonstrates the same product and weekly sales structure and can supply sample products to the separate StockSync inventory app.
+A standalone Statistics and Data Analytics mini project for weekly product sales prediction. The primary experiment uses the real [UCI Online Retail II dataset](https://archive.ics.uci.edu/dataset/502/online+retail+ii). A second, clearly synthetic grocery dataset demonstrates the same product and weekly sales structure and can supply sample products to the separate [StockSync inventory app](https://github.com/DhanushSantosh/StockSync).
 
 ## What is here
 

@@ -13,15 +13,34 @@
       <header class="hero">
         <p class="eyebrow">Statistics & Data Analytics · Activity 2</p>
         <h1>Stock Demand Prediction</h1>
-        <p>Explore weekly sales estimates, compare them with observed sales, and inspect how the model was evaluated.</p>
+        <p>Upload retail transactions, watch each analysis stage, then explore measured weekly sales predictions.</p>
       </header>
 
-      <div class="tabs" role="group" aria-label="Dataset">
-        <button id="real-tab" type="button" aria-pressed="true" data-dataset="real">Real retail study</button>
-        <button id="demo-tab" type="button" aria-pressed="false" data-dataset="demo">Generated grocery example</button>
-      </div>
+      <section class="panel upload" aria-labelledby="upload-title">
+        <h2 id="upload-title">Analyze a dataset</h2>
+        <p class="muted">Use an Excel workbook (.xlsx, one or more sheets) or CSV with these columns: Invoice, StockCode, Description, Quantity, InvoiceDate, Price, Country. The UCI Online Retail II workbook is a ready-to-use example.</p>
+        <form id="upload-form">
+          <label class="file-picker">Dataset file
+            <input id="dataset-file" type="file" accept=".xlsx,.csv" required />
+          </label>
+          <label class="country-picker">Keep sales from country
+            <input id="country" type="text" value="United Kingdom" placeholder="Leave blank for all countries" />
+          </label>
+          <button id="analyze-button" type="submit">Run analysis</button>
+        </form>
+        <p class="footnote">Requires at least 32 complete weeks and a product with 20 sales weeks before the final 12-week test. Maximum file size: 64 MB. Processing runs on this computer; the raw upload is deleted after analysis.</p>
+        <a href="https://archive.ics.uci.edu/dataset/502/online+retail+ii" target="_blank" rel="noopener noreferrer">Download UCI Online Retail II ↗</a>
+      </section>
 
-      <div id="loading" class="panel status" role="status">Loading results…</div>
+      <section id="progress" class="panel" aria-labelledby="progress-title" hidden>
+        <div class="section-head">
+          <div><h2 id="progress-title">Analysis pipeline</h2><p id="progress-summary" class="muted" role="status"></p></div>
+          <span id="elapsed" class="elapsed"></span>
+        </div>
+        <ol id="steps" class="steps"></ol>
+        <p id="error" class="error" role="alert" hidden></p>
+      </section>
+
       <div id="content" hidden>
         <section class="panel intro" aria-labelledby="study-title">
           <div>
@@ -31,7 +50,7 @@
           </div>
           <div class="source">
             <span id="source-name"></span>
-            <a id="source-link" href="https://archive.ics.uci.edu/dataset/502/online+retail+ii" target="_blank" rel="noopener noreferrer">View dataset source ↗</a>
+            <a id="source-link" target="_blank" rel="noopener noreferrer">View dataset source ↗</a>
             <span id="period"></span>
           </div>
         </section>
@@ -70,10 +89,11 @@
           <p id="method-summary"></p>
           <p id="model-comparison"></p>
           <p id="limitation" class="muted"></p>
-          <a href="output/pdf/StockDemandPrediction-SDA-Report.pdf">Read the SDA report (PDF) ↗</a>
+          <a id="report-link" href="output/pdf/StockDemandPrediction-SDA-Report.pdf">Read the UCI study report (PDF) ↗</a>
+          <button id="download-button" class="download" type="button">Download result JSON</button>
         </section>
       </div>
-      <footer>Results are historical or generated examples. They are not live stock recommendations.</footer>
+      <footer>Predictions are estimates from the uploaded historical data. They are not live stock recommendations.</footer>
     </main>
   </body>
 </html>

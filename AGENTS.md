@@ -1,17 +1,16 @@
-# Stock Demand Prediction handoff
+# Stock Demand Prediction context
 
-This is the user's standalone SDA mini project, split from the sibling `../StockSync` Cloud Computing inventory app on 4 November 2026. Read `README.md` and check Git status before changing files. Keep the implementation clean and small.
+This is the user's standalone SDA mini project in `/home/dhanush/Projects/mini-projects/StockDemandPrediction`. The sibling `../StockSync` repository owns the Cloud Computing inventory app. Keep this project clean and small; check Git status before edits.
 
-## Current state
+## Data and model
 
-- The primary analysis is UCI Online Retail II, a real two-sheet Excel transaction dataset. `analytics/build.py` filters invalid/cancelled/returned rows, includes zero-sale weeks, selects 50 products using training-period data, and evaluates a chronological 12-week holdout against a previous-week baseline. The committed `src/data/retail-insights.json` records source hash, counts, settings, metrics, and per-product series.
-- The secondary `analytics/demo/*.csv` data is generated synthetic grocery history: ten products, 52 weeks, 520 product-week rows. `analytics/build_demo.py` evaluates an eight-week holdout and writes `src/data/demo-insights.json`. The product CSV can be imported into a StockSync demo account, but the weekly sale history is not imported into Firestore. Never call the synthetic results observed shop performance.
-- The UCI workbook and zip are local under ignored `analytics/data/`; the Python environment is ignored under `analytics/.venv/`. Do not commit raw transactions, credentials, or private shop exports. The UCI workbook checksum is documented in `docs/sda/report.md`.
-- `docs/sda/report.md`, figures, and `output/pdf/StockDemandPrediction-SDA-Report.pdf` are the standalone submission materials. `docs/combined-report.md` and matching DOCX/PDF are archived historical snapshots that describe the former integrated app; do not present them as the current architecture without revision.
-- `reference/InsightsPage.tsx` and `reference/insights-hi.ts` preserve the former StockSync UI. They depend on the old app's components and styles. The standalone results viewer at the repository root is the active presentation.
+- The documented real-world study uses UCI Online Retail II. The exact local workbook is ignored at `analytics/data/online_retail_II.xlsx`; its SHA-256 is in `docs/sda/report.md`. Do not commit raw transactions, private shop exports, or credentials.
+- `analytics/build.py` accepts compatible `.xlsx` and `.csv` transaction files. It cleans sales, creates complete weekly series including zero-sale weeks, selects up to 50 products using training data only, builds earlier-week features, holds out the last 12 complete weeks, and compares Random Forest Regression with the previous-week baseline. The fixed UCI result is `output/results/uci-reference.json` for report reproduction.
+- The local `server.py` accepts uploads, runs one analysis in a worker thread, reports stage updates at `/api/jobs/{id}`, and deletes the temporary raw file after the run. The root `index.html` and `viewer.js` show progress and reveal metrics/charts after completion. The server only binds to `127.0.0.1`; results stay in memory and can be downloaded in the browser. No Firebase service is used here.
+- The generated grocery dataset and former embedded Insights component were removed. Do not reintroduce synthetic results or silently preload the reference JSON into the viewer.
 
-## Development notes
+## Verification
 
-Follow the user's next requested deliverable. Keep the real UCI experiment as the primary study and synthetic grocery history as a labeled demo. Keep technical evaluation accessible without implying that historical UK giftware estimates apply to current shop inventory. Do not introduce Firebase services without a concrete need.
+Run `analytics/.venv/bin/python -m unittest discover -s analytics -p 'test_*.py'` and `node --check viewer.js`. For model changes, rerun `analytics/.venv/bin/python analytics/build.py` against the local UCI workbook and verify the report's numbers, figures, and PDF. Check the upload UI with a real workbook and a smaller compatible CSV, including validation failures and progress visibility. `analytics/build.py` on the full workbook takes longer than the unit tests.
 
-For code changes, run `analytics/.venv/bin/python -m unittest discover -s analytics -p 'test_*.py'`, regenerate affected JSON/PDF artifacts, and verify their figures and metrics. `analytics/build.py` needs the local UCI workbook and takes longer than the synthetic pipeline. The sibling StockSync repo has independent CI and deployment.
+The UCI result supports a historical, measured experiment. It does not establish dependable demand estimates for an unrelated shop. Preserve that distinction in the UI and reports.

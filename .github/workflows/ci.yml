@@ -16,7 +16,9 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: analytics/requirements.txt
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
       - run: python -m pip install -r analytics/requirements.txt
       - run: python -m unittest discover -s analytics -p 'test_*.py'
-      - run: python analytics/build_demo.py
-      - run: git diff --exit-code -- analytics/demo src/data/demo-insights.json
+      - run: node --check viewer.js

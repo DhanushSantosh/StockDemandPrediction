@@ -15,7 +15,7 @@ This standalone SDA project studies whether historical retail transactions can p
 
 ## 1. Problem and scope
 
-Retailers need to estimate future demand when planning purchases. Sales history can reveal patterns, but it is noisy and is not the same as stock-on-hand. This project predicts units sold in a week from earlier weeks' sales. It evaluates the model on a public historical dataset and writes a versioned JSON result and report figures. No prediction in this report is a recommendation for a current shop.
+Retailers need to estimate future demand when planning purchases. Sales history can reveal patterns, but it is noisy and is not the same as stock-on-hand. This project predicts units sold in a week from earlier weeks' sales. Its local web interface accepts a compatible Excel or CSV dataset, shows each processing stage, and reveals results when the run finishes. This report documents the measured UCI experiment. No prediction in this report is a recommendation for a current shop.
 
 ## 2. Dataset and attribution
 
@@ -67,16 +67,16 @@ The result JSON also contains a dated illustrative estimate for the week startin
 ## 6. Reproducible data flow
 
 ```text
-UCI Excel workbook (local) → clean sales → weekly product series
-  → lag features → train / chronological holdout → measured metrics
-  → versioned JSON → figures and report
+Browser upload (.xlsx or .csv) → local Python server → clean sales
+  → complete weekly series → earlier-week features → train model
+  → chronological holdout + baseline → result JSON → browser charts
 ```
 
-The workbook stays local. The committed JSON contains source metadata, cleaning counts, measured metrics, and per-product series. The figures and report are generated from that result. The separate grocery demo follows the same analysis approach but is synthetic and cannot validate real-world model performance. A former StockSync page is preserved under `reference/` only as material for a possible future standalone presentation.
+The server runs on `127.0.0.1` and shows the read, clean, weekly aggregation, feature, training, evaluation, and insight stages in the browser. The raw upload is deleted when processing finishes. Results are held in memory for the current server session and can be downloaded as JSON. The static figures and PDF in this repository were generated separately from the documented UCI workbook; they are not substituted for an uploaded run.
 
 ## 7. Limitations and conclusion
 
-- The dataset represents a 2009–2011 UK giftware and wholesale business, not a present-day Indian grocery shop. Its prices are in GBP and must not be compared with the synthetic grocery demo's INR values.
+- The documented UCI dataset represents a 2009–2011 UK giftware and wholesale business, not a present-day Indian grocery shop. Its prices are in GBP.
 - Transactions record observed sales, not unmet demand or actual inventory. Stockouts, promotions, holidays, and supplier delays cannot be distinguished reliably from these fields.
 - One 12-week holdout is a defensible mini-project evaluation but does not establish stable performance across seasons or retailers.
 - A real shop's sales history could support a shop-specific model later, after enough clean data accumulates and a separate evaluation demonstrates value. No such live forecast is claimed here.
@@ -86,9 +86,9 @@ The experiment satisfies the SDA goal of collecting a real dataset, cleaning it,
 ## 8. Reproduce the results
 
 1. Download and unzip **Online Retail II** from the UCI link above into `analytics/data/online_retail_II.xlsx` in this checkout. The `analytics/data/` directory is ignored by Git. Check that the workbook SHA-256 matches the value in Section 2.
-2. From the repository root, create a Python environment and install `analytics/requirements.txt`.
-3. Run `python analytics/build.py`. This reads the local workbook and writes `src/data/retail-insights.json`.
-4. Run `python -m unittest discover -s analytics -p 'test_*.py'` for cleaning and leakage checks.
-5. Run `python analytics/render_report.py` to regenerate figures and this PDF from the JSON.
+2. From the repository root, create a Python 3.12 environment and install `analytics/requirements.txt`.
+3. Run `python server.py`, open `http://127.0.0.1:8000/`, upload the workbook, and watch the pipeline before inspecting the results.
+4. For the versioned reference result used by this report, run `python analytics/build.py`. It writes `output/results/uci-reference.json`; then run `python analytics/render_report.py` to regenerate figures and this PDF.
+5. Run `python -m unittest discover -s analytics -p 'test_*.py'` for cleaning, leakage, and upload-flow checks.
 
-The generated JSON includes the source hash, cleaning counts, model settings, holdout dates, metrics, and each selected product's 12 held-out actual and predicted values.
+The result JSON includes the source hash, cleaning counts, model settings, holdout dates, metrics, and each selected product's held-out actual and predicted values. The upload interface accepts files with `Invoice`, `StockCode`, `Description`, `Quantity`, `InvoiceDate`, `Price`, and `Country` columns; custom files need enough complete weeks and eligible products for the chronological evaluation.

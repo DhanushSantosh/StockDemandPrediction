@@ -17,7 +17,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Table, TableStyle
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "src/data/retail-insights.json"
+DATA = ROOT / "output/results/uci-reference.json"
 FIGURES = ROOT / "docs/sda/figures"
 PDF = ROOT / "output/pdf/StockDemandPrediction-SDA-Report.pdf"
 
@@ -102,11 +102,11 @@ def pdf(data: dict) -> None:
     add("Interpretation and use", "HeadCustom")
     story.append(Image(str(FIGURES / "model-comparison.png"), width=390, height=184))
     add("Figure 2. Error comparison on the same 600 held-out product-weeks.", "SmallCustom")
-    add("The pipeline writes a small, versioned JSON file with the measured metrics and product series. The raw workbook stays local. The estimate for the week starting 5 December 2011 is a dated illustration from a model retrained on all complete weeks; it is not an evaluated current forecast or stock recommendation.")
+    add("The local browser interface accepts an Excel or CSV upload and shows the reading, cleaning, weekly aggregation, features, training, evaluation, and insight stages as they run. Results appear after completion and can be downloaded as JSON. The raw upload is then deleted. The estimate for the week starting 5 December 2011 is a dated illustration from a model retrained on all complete weeks; it is not an evaluated current forecast or stock recommendation.")
     add("Limitations", "HeadCustom")
-    add("This UK retailer and its historical giftware and wholesale demand differ from a current Indian grocery store. Prices are GBP, while the synthetic grocery demo uses INR. Transactions show observed sales, not unmet demand or inventory levels. Promotions, stockouts, holidays, and supplier delays are not represented. One 12-week test period is not evidence of stable performance across stores or seasons.")
+    add("This UK retailer and its historical giftware and wholesale demand differ from a current Indian grocery store. Transactions show observed sales, not unmet demand or inventory levels. Promotions, stockouts, holidays, and supplier delays are not represented. One 12-week test period is not evidence of stable performance across stores or seasons.")
     add("Reproduction", "HeadCustom")
-    add("Download UCI Online Retail II, verify the workbook SHA-256 on page 1, install analytics/requirements.txt, and run: python analytics/build.py --input /path/to/online_retail_II.xlsx. Run python -m unittest discover -s analytics -p 'test_*.py', then python analytics/render_report.py. The generated JSON records source, cleaning, model settings, holdout, metrics, and per-product predictions.")
+    add("Download UCI Online Retail II, verify the workbook SHA-256 on page 1, and install analytics/requirements.txt. Run python server.py and upload the extracted workbook at http://127.0.0.1:8000/. For this fixed reference result, run python analytics/build.py followed by python -m unittest discover -s analytics -p 'test_*.py' and python analytics/render_report.py. The generated JSON records source, cleaning, model settings, holdout, metrics, and per-product predictions.")
     add("Sources", "HeadCustom")
     add('<link href="https://doi.org/10.24432/C5CG6D" color="#2367a5">Chen, D. (2012). Online Retail II. UCI Machine Learning Repository. DOI: 10.24432/C5CG6D.</link>', "SmallCustom")
     add('<link href="https://scikit-learn.org/stable/auto_examples/applications/plot_time_series_lagged_features.html" color="#2367a5">Scikit-learn: Lagged features for time series forecasting and time-ordered evaluation.</link>', "SmallCustom")

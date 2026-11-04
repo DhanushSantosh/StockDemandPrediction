@@ -1,11 +1,7 @@
-const sources = {
-  real: "src/data/retail-insights.json",
-  demo: "src/data/demo-insights.json",
-};
-const results = {};
-const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 const $ = (id) => document.getElementById(id);
-let active = "real";
+const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
+let result = null;
+let startedAt = 0;
 
 function setText(id, value) {
   $(id).textContent = value;
@@ -44,8 +40,7 @@ function drawChart(weeks) {
 }
 
 function showProduct() {
-  const data = results[active];
-  const product = data.products.find((item) => item.code === $("product-select").value);
+  const product = result.products.find((item) => item.code === $("product-select").value);
   if (!product) return;
   drawChart(product.weeks);
   const body = $("weekly-rows");
@@ -59,24 +54,18 @@ function showProduct() {
     }
     body.append(row);
   }
-  setText("next-week", `Illustrative estimate for week of ${data.period.illustrativeNextWeek}: ${number.format(product.nextWeekEstimate)} units. This dated example was not included in the held-out evaluation.`);
+  setText("next-week", `Illustrative estimate for week of ${result.period.illustrativeNextWeek}: ${number.format(product.nextWeekEstimate)} units. This dated example was not included in the held-out evaluation.`);
 }
 
-function showDataset(kind) {
-  if (!results[kind]) return;
-  active = kind;
-  const data = results[kind];
-  const synthetic = kind === "demo";
-  for (const tab of document.querySelectorAll("[data-dataset]")) {
-    tab.setAttribute("aria-pressed", String(tab.dataset.dataset === kind));
-  }
-  setText("study-type", synthetic ? "Synthetic practice data" : "Independent real-world dataset");
-  setText("study-title", synthetic ? "Grocery shop example" : "UCI Online Retail II");
-  setText("study-note", synthetic
-    ? "Ten generated grocery products across 52 weeks. These sales were simulated; they are not records from your shop."
-    : "Historical UK giftware transactions from 2009–2011. These products are unrelated to a current StockSync shop.");
+function showResult(data) {
+  result = data;
+  setText("study-type", data.source.url ? "UCI Online Retail II" : "Uploaded retail dataset");
+  setText("study-title", data.source.name);
+  setText("study-note", `${data.model.productCount} eligible products. The country filter was ${data.source.country}. These results describe the uploaded history, not live shop inventory.`);
   setText("source-name", data.source.name);
-  $("source-link").hidden = synthetic;
+  $("source-link").hidden = !data.source.url;
+  $("report-link").hidden = !data.source.url;
+  if (data.source.url) $("source-link").href = data.source.url;
   setText("period", `${data.period.firstWeek} to ${data.period.lastObservedDate}`);
   setText("model-mae", number.format(data.metrics.model.mae));
   setText("baseline-mae", number.format(data.metrics.baseline.mae));
@@ -85,9 +74,7 @@ function showDataset(kind) {
   setText("test-weeks", `${data.period.holdoutWeeks} complete held-out weeks`);
   setText("method-summary", `A Random Forest model uses the previous four weeks of sales, their average, last known price, calendar week, and product identity. Training ends ${data.period.trainingEnd}; testing starts ${data.period.holdoutStart}. No target-week sales enter the inputs.`);
   setText("model-comparison", `Model MAE ${data.metrics.model.mae} versus previous-week baseline ${data.metrics.baseline.mae}; model R² ${data.metrics.model.r2}. Lower MAE and RMSE are better; higher R² is better.`);
-  setText("limitation", synthetic
-    ? "The grocery history is generated. Its measured errors show that the code runs, not that it predicts real shop demand."
-    : "These UK transaction records contain observed sales, not inventory or unmet demand. One 12-week holdout cannot establish reliable purchasing advice for other shops.");
+  setText("limitation", "Transactions show observed sales, not unmet demand or stock on hand. A single 12-week test period does not prove accuracy for other periods or shops.");
   const select = $("product-select");
   select.replaceChildren();
   for (const product of data.products) {
@@ -97,23 +84,88 @@ function showDataset(kind) {
     select.append(option);
   }
   showProduct();
+  $("content").hidden = false;
 }
 
-async function load() {
+function showSteps(steps) {
+  const list = $("steps");
+  list.replaceChildren();
+  for (const step of steps) {
+    const item = document.createElement("li");
+    item.className = `step ${step.status}`;
+    const label = document.createElement("strong");
+    label.textContent = step.label;
+    const detail = document.createElement("span");
+    detail.textContent = step.detail || (step.status === "pending" ? "Waiting" : "");
+    item.append(label, detail);
+    list.append(item);
+  }
+  setText("elapsed", `${Math.floor((Date.now() - startedAt) / 1000)}s elapsed`);
+}
+
+async function poll(jobId) {
   try {
-    const response = await Promise.all(Object.values(sources).map((path) => fetch(path)));
-    if (response.some((item) => !item.ok)) throw new Error("A result file could not be loaded.");
-    [results.real, results.demo] = await Promise.all(response.map((item) => item.json()));
-    $("loading").hidden = true;
-    $("content").hidden = false;
-    showDataset("real");
-  } catch {
-    setText("loading", "Results could not be loaded. Start a local web server from this folder and reload the page.");
+    const response = await fetch(`/api/jobs/${jobId}`, { cache: "no-store" });
+    if (!response.ok) throw new Error("Analysis status could not be loaded");
+    const job = await response.json();
+    showSteps(job.steps);
+    if (job.status === "complete") {
+      setText("progress-summary", "Analysis complete. Explore the measured results below.");
+      $("analyze-button").disabled = false;
+      showResult(job.result);
+    } else if (job.status === "error") {
+      setText("progress-summary", "Analysis stopped.");
+      setText("error", job.error);
+      $("error").hidden = false;
+      $("analyze-button").disabled = false;
+    } else {
+      setText("progress-summary", `Processing ${job.name}…`);
+      window.setTimeout(() => poll(jobId), 700);
+    }
+  } catch (error) {
+    setText("error", error.message);
+    $("error").hidden = false;
+    $("analyze-button").disabled = false;
   }
 }
 
-for (const tab of document.querySelectorAll("[data-dataset]")) {
-  tab.addEventListener("click", () => showDataset(tab.dataset.dataset));
-}
+$("upload-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const file = $("dataset-file").files[0];
+  if (!file) return;
+  $("content").hidden = true;
+  $("progress").hidden = false;
+  $("error").hidden = true;
+  $("steps").replaceChildren();
+  $("analyze-button").disabled = true;
+  startedAt = Date.now();
+  setText("elapsed", "0s elapsed");
+  setText("progress-summary", `Uploading ${file.name}…`);
+  try {
+    const query = new URLSearchParams({ name: file.name, country: $("country").value });
+    const response = await fetch(`/api/analyze?${query}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/octet-stream" },
+      body: file,
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.error || "Upload failed");
+    poll(payload.id);
+  } catch (error) {
+    setText("progress-summary", "Upload stopped.");
+    setText("error", error.message);
+    $("error").hidden = false;
+    $("analyze-button").disabled = false;
+  }
+});
+
 $("product-select").addEventListener("change", showProduct);
-load();
+$("download-button").addEventListener("click", () => {
+  if (!result) return;
+  const url = URL.createObjectURL(new Blob([JSON.stringify(result, null, 2)], { type: "application/json" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "stock-demand-results.json";
+  link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+});

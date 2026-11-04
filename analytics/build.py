@@ -1,4 +1,4 @@
-"""Rebuild the retail demand analysis from UCI Online Retail II."""
+"""Analyze compatible retail transactions and reproduce the UCI study."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 import pandas as pd
@@ -19,6 +20,8 @@ HOLDOUT_WEEKS = 12
 PRODUCT_COUNT = 50
 FEATURES = ["lag1", "lag2", "lag3", "lag4", "mean4", "lastPrice", "weekOfYear"]
 MODEL = {"n_estimators": 100, "max_depth": 12, "min_samples_leaf": 3, "random_state": 42, "n_jobs": 1}
+REQUIRED = ["Invoice", "StockCode", "Description", "Quantity", "InvoiceDate", "Price", "Country"]
+Progress = Callable[[str, str, str], None]
 
 
 def sha256(path: Path) -> str:
@@ -26,19 +29,27 @@ def sha256(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def read_workbook(path: Path) -> pd.DataFrame:
-    sheets = pd.read_excel(path, sheet_name=None, dtype={"StockCode": "string", "Invoice": "string"})
-    if len(sheets) != 2:
-        raise ValueError("Expected both yearly sheets in UCI Online Retail II")
-    required = {"Invoice", "StockCode", "Description", "Quantity", "InvoiceDate", "Price", "Country"}
+def read_dataset(path: Path) -> pd.DataFrame:
+    if path.suffix.lower() == ".xlsx":
+        sheets = pd.read_excel(path, sheet_name=None, dtype={"StockCode": "string", "Invoice": "string"})
+    elif path.suffix.lower() == ".csv":
+        sheets = {"CSV": pd.read_csv(path, dtype={"StockCode": "string", "Invoice": "string"})}
+    else:
+        raise ValueError("Upload an .xlsx workbook or .csv file")
     for name, sheet in sheets.items():
-        if not required.issubset(sheet.columns):
-            raise ValueError(f"Missing columns in {name}: {required - set(sheet.columns)}")
-    return pd.concat((sheet[list(required)] for sheet in sheets.values()), ignore_index=True)
+        missing = set(REQUIRED) - set(sheet.columns)
+        if missing:
+            raise ValueError(f"Missing columns in {name}: {', '.join(sorted(missing))}")
+    return pd.concat((sheet[REQUIRED] for sheet in sheets.values()), ignore_index=True)
 
 
-def clean_sales(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, int]]:
-    """Keep actual UK merchandise sales; each removal reason is counted once."""
+def read_workbook(path: Path) -> pd.DataFrame:
+    """Backward-compatible name for the workbook reader."""
+    return read_dataset(path)
+
+
+def clean_sales(raw: pd.DataFrame, country: str | None = "United Kingdom", strict_codes: bool = True) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Keep valid merchandise sales; each removal reason is counted once."""
     data = raw.copy()
     counts = {"rawRows": len(data)}
     checks = [
@@ -46,8 +57,8 @@ def clean_sales(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, int]]:
         ("cancelled", data["Invoice"].astype("string").str.upper().str.startswith("C").fillna(False)),
         ("returnsOrNonpositiveQuantity", pd.to_numeric(data["Quantity"], errors="coerce").le(0) | pd.to_numeric(data["Quantity"], errors="coerce").isna()),
         ("nonpositivePrice", pd.to_numeric(data["Price"], errors="coerce").le(0) | pd.to_numeric(data["Price"], errors="coerce").isna()),
-        ("outsideUK", data["Country"].ne("United Kingdom").fillna(True)),
-        ("invalidProductCode", ~data["StockCode"].astype("string").str.fullmatch(r"\d{5}[A-Za-z]?").fillna(False)),
+        ("outsideUK" if country == "United Kingdom" else "outsideCountry", data["Country"].ne(country).fillna(True) if country else pd.Series(False, index=data.index)),
+        ("invalidProductCode", ~data["StockCode"].astype("string").str.fullmatch(r"\d{5}[A-Za-z]?" if strict_codes else r"[A-Za-z0-9][A-Za-z0-9._-]{0,39}").fillna(False)),
         ("missingDateOrDescription", pd.to_datetime(data["InvoiceDate"], errors="coerce").isna() | data["Description"].isna() | data["Description"].astype("string").str.strip().eq("").fillna(True)),
     ]
     for label, bad in checks:
@@ -58,6 +69,8 @@ def clean_sales(raw: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, int]]:
     data["InvoiceDate"] = pd.to_datetime(data["InvoiceDate"])
     data["StockCode"] = data["StockCode"].astype(str).str.upper()
     data["Description"] = data["Description"].astype(str).str.strip()
+    data["Quantity"] = pd.to_numeric(data["Quantity"])
+    data["Price"] = pd.to_numeric(data["Price"])
     counts["retainedRows"] = len(data)
     return data, counts
 
@@ -83,8 +96,8 @@ def weekly_panel(data: pd.DataFrame, weeks: pd.DatetimeIndex) -> tuple[pd.DataFr
     active = training.groupby("StockCode")["week"].nunique()
     volume = training.groupby("StockCode")["Quantity"].sum()
     selected = volume.loc[active[active >= 20].index].sort_values(ascending=False, kind="stable").head(PRODUCT_COUNT)
-    if len(selected) != PRODUCT_COUNT:
-        raise ValueError(f"Expected {PRODUCT_COUNT} eligible products; found {len(selected)}")
+    if selected.empty:
+        raise ValueError("No products have 20 sales weeks before the 12-week test period")
     products = data.loc[data["StockCode"].isin(selected.index)].copy()
     products["priceTimesUnits"] = products["Price"] * products["Quantity"]
     grouped = products.groupby(["StockCode", "week"], sort=True).agg(units=("Quantity", "sum"), priceTotal=("priceTimesUnits", "sum"))
@@ -119,28 +132,48 @@ def metrics(actual: np.ndarray, predicted: np.ndarray) -> dict[str, float]:
     }
 
 
-def build(path: Path) -> dict:
+def build(path: Path, *, country: str | None = "United Kingdom", source_name: str | None = None, progress: Progress | None = None) -> dict:
+    def emit(stage: str, status: str, detail: str) -> None:
+        if progress:
+            progress(stage, status, detail)
+
+    emit("read", "running", "Checking the file and reading transactions")
     digest = sha256(path)
-    if digest != SHA256:
-        raise ValueError(f"Dataset checksum differs from the documented UCI workbook: {digest}")
-    raw = read_workbook(path)
-    clean, counts = clean_sales(raw)
+    official = digest == SHA256
+    raw = read_dataset(path)
+    emit("read", "done", f"Read {len(raw):,} transaction rows")
+    emit("clean", "running", "Removing cancellations, returns, invalid values and unwanted countries")
+    clean, counts = clean_sales(raw, country=country, strict_codes=official)
+    if clean.empty:
+        raise ValueError("No valid sales remain after cleaning; check the file and country filter")
+    emit("clean", "done", f"Kept {len(clean):,} valid sales")
+    emit("weekly", "running", "Finding complete weeks and filling zero-sale product weeks")
     complete, weeks, boundary_rows = complete_weeks(clean)
     counts["incompleteBoundaryWeekRows"] = boundary_rows
     counts["completeWeekRows"] = len(complete)
     panel, selected = weekly_panel(complete, weeks)
+    emit("weekly", "done", f"Selected {len(selected)} products across {len(weeks)} complete weeks")
+    emit("features", "running", "Building lagged sales and price features from earlier weeks")
     rows = feature_rows(panel)
     cutoff = weeks[-HOLDOUT_WEEKS]
     train = rows.loc[rows["week"] < cutoff]
     test = rows.loc[rows["week"] >= cutoff]
     x_train = matrix(train)
     x_test = matrix(test, x_train.columns.tolist())
+    emit("features", "done", f"Prepared {len(train):,} training and {len(test):,} test product-weeks")
+    emit("train", "running", "Training the Random Forest on earlier weeks")
     model = RandomForestRegressor(**MODEL).fit(x_train, train["units"])
+    emit("train", "done", "Model trained with a fixed random seed")
+    emit("evaluate", "running", "Comparing held-out predictions with the previous-week baseline")
     predicted = np.maximum(0, model.predict(x_test))
     actual = test["units"].to_numpy()
     baseline = test["lag1"].to_numpy()
     evaluated = test[["StockCode", "week", "units", "lag1"]].copy()
     evaluated["predicted"] = predicted
+    model_metrics = metrics(actual, predicted)
+    baseline_metrics = metrics(actual, baseline)
+    emit("evaluate", "done", f"Model MAE {model_metrics['mae']}; baseline MAE {baseline_metrics['mae']}")
+    emit("results", "running", "Preparing product charts and the illustrative next-week estimate")
     names = (complete.loc[complete["week"] < cutoff].groupby("StockCode")["Description"]
              .agg(lambda values: values.value_counts().index[0]))
 
@@ -163,25 +196,28 @@ def build(path: Path) -> dict:
             "weeks": [{"week": date.strftime("%Y-%m-%d"), "actual": int(actual_units), "predicted": round(float(estimate), 1), "baseline": int(previous)}
                       for date, actual_units, estimate, previous in series[["week", "units", "predicted", "lag1"]].itertuples(index=False, name=None)],
         })
-    return {
+    result = {
         "version": 1,
-        "source": {"name": "UCI Online Retail II", "url": SOURCE, "sha256": digest, "license": "CC BY 4.0", "country": "United Kingdom", "currency": "GBP"},
+        "source": {"name": "UCI Online Retail II" if official else (source_name or path.name), "url": SOURCE if official else None, "sha256": digest, "license": "CC BY 4.0" if official else None, "country": country or "All countries", "currency": "GBP" if official else "unspecified"},
         "period": {"firstWeek": weeks[0].strftime("%Y-%m-%d"), "lastWeek": weeks[-1].strftime("%Y-%m-%d"), "lastObservedDate": (weeks[-1] + pd.Timedelta(days=6)).strftime("%Y-%m-%d"), "trainingEnd": (cutoff - pd.Timedelta(days=1)).strftime("%Y-%m-%d"), "holdoutStart": cutoff.strftime("%Y-%m-%d"), "holdoutWeeks": HOLDOUT_WEEKS, "illustrativeNextWeek": future_week.strftime("%Y-%m-%d")},
         "cleaning": counts,
         "model": {"name": "Random Forest Regression", "settings": {key: value for key, value in MODEL.items() if key != "n_jobs"}, "features": FEATURES + ["one-hot StockCode"], "trainRows": len(train), "testRows": len(test), "productCount": len(products)},
-        "metrics": {"model": metrics(actual, predicted), "baseline": metrics(actual, baseline)},
+        "metrics": {"model": model_metrics, "baseline": baseline_metrics},
         "products": products,
     }
+    emit("results", "done", f"Prepared {len(products)} product series")
+    return result
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=DEFAULT_INPUT, help="UCI workbook (default: analytics/data/online_retail_II.xlsx)")
-    parser.add_argument("--output", type=Path, default=Path("src/data/retail-insights.json"))
+    parser.add_argument("--input", type=Path, default=DEFAULT_INPUT, help="Excel or CSV transaction data (default: local UCI workbook)")
+    parser.add_argument("--output", type=Path, default=Path("output/results/uci-reference.json"))
+    parser.add_argument("--country", default="United Kingdom", help="Country to keep; use an empty string for all")
     args = parser.parse_args()
     if not args.input.is_file():
-        parser.error(f"Dataset missing: {args.input}. Download UCI Online Retail II into analytics/data/ first.")
-    result = build(args.input)
+        parser.error(f"Dataset missing: {args.input}")
+    result = build(args.input, country=args.country or None)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
     print(f"Wrote {args.output}; model MAE {result['metrics']['model']['mae']}, baseline MAE {result['metrics']['baseline']['mae']}")

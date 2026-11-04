@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101a2b" />
+    <title>Stock Demand Prediction</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="viewer.js" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <p class="eyebrow">Statistics & Data Analytics · Activity 2</p>
+        <h1>Stock Demand Prediction</h1>
+        <p>Explore weekly sales estimates, compare them with observed sales, and inspect how the model was evaluated.</p>
+      </header>
+
+      <div class="tabs" role="group" aria-label="Dataset">
+        <button id="real-tab" type="button" aria-pressed="true" data-dataset="real">Real retail study</button>
+        <button id="demo-tab" type="button" aria-pressed="false" data-dataset="demo">Generated grocery example</button>
+      </div>
+
+      <div id="loading" class="panel status" role="status">Loading results…</div>
+      <div id="content" hidden>
+        <section class="panel intro" aria-labelledby="study-title">
+          <div>
+            <p id="study-type" class="eyebrow"></p>
+            <h2 id="study-title"></h2>
+            <p id="study-note" class="muted"></p>
+          </div>
+          <div class="source">
+            <span id="source-name"></span>
+            <a id="source-link" href="https://archive.ics.uci.edu/dataset/502/online+retail+ii" target="_blank" rel="noopener noreferrer">View dataset source ↗</a>
+            <span id="period"></span>
+          </div>
+        </section>
+
+        <section class="metrics" aria-label="Held-out evaluation">
+          <div class="metric"><span>Model MAE</span><strong id="model-mae"></strong><small>average error, units / product-week</small></div>
+          <div class="metric"><span>Previous-week MAE</span><strong id="baseline-mae"></strong><small>simple comparison</small></div>
+          <div class="metric"><span>Model RMSE</span><strong id="model-rmse"></strong><small>penalizes large misses</small></div>
+          <div class="metric"><span>Test cases</span><strong id="test-rows"></strong><small id="test-weeks"></small></div>
+        </section>
+
+        <section class="panel" aria-labelledby="product-heading">
+          <div class="section-head">
+            <div>
+              <h2 id="product-heading">Product sales</h2>
+              <p class="muted">Actual sales and predictions from the held-out weeks.</p>
+            </div>
+            <label class="picker">Product
+              <select id="product-select"></select>
+            </label>
+          </div>
+          <div class="legend"><span class="actual">Actual</span><span class="predicted">Model</span><span class="baseline">Previous week</span></div>
+          <div id="chart" class="chart" role="img" aria-label="Weekly actual sales, model predictions, and baseline"></div>
+          <div class="table-wrap">
+            <table>
+              <caption>Held-out product weeks (units sold)</caption>
+              <thead><tr><th scope="col">Week starting</th><th scope="col">Actual</th><th scope="col">Model</th><th scope="col">Previous week</th></tr></thead>
+              <tbody id="weekly-rows"></tbody>
+            </table>
+          </div>
+          <p id="next-week" class="footnote"></p>
+        </section>
+
+        <section class="panel method" aria-labelledby="method-heading">
+          <h2 id="method-heading">Method and limits</h2>
+          <p id="method-summary"></p>
+          <p id="model-comparison"></p>
+          <p id="limitation" class="muted"></p>
+          <a href="output/pdf/StockDemandPrediction-SDA-Report.pdf">Read the SDA report (PDF) ↗</a>
+        </section>
+      </div>
+      <footer>Results are historical or generated examples. They are not live stock recommendations.</footer>
+    </main>
+  </body>
+</html>

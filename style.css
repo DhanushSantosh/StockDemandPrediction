@@ -1,0 +1,63 @@
+:root { color-scheme: light; font: 16px/1.5 Inter, system-ui, sans-serif; background: #f3f6fb; color: #15233a; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, select { font: inherit; }
+button { cursor: pointer; }
+a { color: #215eaa; }
+.shell { max-width: 1100px; margin: auto; padding: 32px 20px 60px; }
+.hero { padding: 30px 34px; border-radius: 24px; color: #fff; background: linear-gradient(120deg, #101a2b, #1c4373); }
+.hero h1 { font-size: clamp(2rem, 5vw, 3.35rem); line-height: 1.1; margin: 8px 0 12px; letter-spacing: -.035em; }
+.hero p:last-child { max-width: 720px; margin: 0; color: #d3dfef; }
+.eyebrow { margin: 0; color: #5587cf; font-size: .77rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.hero .eyebrow { color: #a9cbff; }
+.tabs { display: flex; gap: 8px; margin: 24px 0 16px; flex-wrap: wrap; }
+.tabs button { border: 1px solid #cbd6e5; border-radius: 999px; background: #fff; color: #334a67; padding: 10px 18px; font-weight: 700; }
+.tabs button[aria-pressed="true"] { background: #1d5fa8; border-color: #1d5fa8; color: #fff; }
+.tabs button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #e7a43b; outline-offset: 3px; }
+.panel, .metric { background: #fff; border: 1px solid #e0e7f0; box-shadow: 0 6px 24px #142a4b0a; border-radius: 18px; }
+.panel { padding: 24px; margin-bottom: 16px; }
+.status { text-align: center; }
+.intro { display: flex; justify-content: space-between; gap: 32px; }
+h2 { font-size: 1.28rem; margin: 0 0 6px; }
+.muted { color: #5d6a7d; margin: 0; }
+.source { display: grid; align-content: start; gap: 6px; min-width: 225px; color: #5d6a7d; font-size: .9rem; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.metric { padding: 18px; display: grid; gap: 2px; }
+.metric span { color: #52627a; font-size: .88rem; }
+.metric strong { font-size: 1.85rem; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.metric small { color: #68778e; }
+.section-head { display: flex; justify-content: space-between; gap: 24px; align-items: end; }
+.picker { display: grid; gap: 4px; color: #52627a; font-size: .84rem; font-weight: 700; min-width: min(100%, 330px); }
+select { width: 100%; padding: 10px 12px; border: 1px solid #becbdd; border-radius: 10px; background: #fff; color: #15233a; }
+.legend { display: flex; flex-wrap: wrap; gap: 18px; margin: 20px 0 8px; color: #506077; font-size: .86rem; }
+.legend span::before { content: ""; display: inline-block; width: 17px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 3px; }
+.legend .actual::before { background: #2563ae; }
+.legend .predicted::before { background: #d47a24; }
+.legend .baseline::before { background: #7c8ba3; }
+.chart { height: 250px; width: 100%; }
+.chart svg { width: 100%; height: 100%; overflow: visible; }
+.grid-line { stroke: #e6ebf2; stroke-width: 1; }
+.series { fill: none; stroke-width: 3.5; stroke-linejoin: round; stroke-linecap: round; }
+.series.actual { stroke: #2563ae; }
+.series.predicted { stroke: #d47a24; }
+.series.baseline { stroke: #7c8ba3; stroke-dasharray: 6 5; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+caption { text-align: left; color: #5d6a7d; font-size: .82rem; margin-bottom: 6px; }
+th, td { border-bottom: 1px solid #e8edf3; padding: 9px 8px; text-align: right; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: #52627a; font-size: .84rem; }
+.footnote { color: #52627a; font-size: .87rem; margin: 14px 0 0; }
+.method p { margin: 8px 0; }
+footer { color: #65758b; text-align: center; font-size: .85rem; padding-top: 8px; }
+[hidden] { display: none !important; }
+@media (max-width: 760px) {
+  .shell { padding: 16px 12px 40px; }
+  .hero { padding: 24px 20px; border-radius: 18px; }
+  .intro, .section-head { display: block; }
+  .source, .picker { margin-top: 18px; }
+  .metrics { grid-template-columns: repeat(2, 1fr); }
+  .panel { padding: 18px; }
+  .metric strong { font-size: 1.48rem; }
+}
+@media (max-width: 440px) { .metrics { gap: 8px; } .metric { padding: 13px; } .metric small { font-size: .7rem; } }

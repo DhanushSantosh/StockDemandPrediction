@@ -13,7 +13,7 @@ from tempfile import TemporaryDirectory
 
 import pandas as pd
 
-from build import read_dataset
+from build import build, read_dataset
 from server import Handler, ThreadingHTTPServer
 
 
@@ -30,6 +30,16 @@ def transaction_csv() -> bytes:
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_custom_upload_includes_all_countries_by_default(self):
+        with TemporaryDirectory() as folder:
+            data = pd.read_csv(io.BytesIO(transaction_csv()))
+            data.loc[data["StockCode"] == "BIS-250", "Country"] = "France"
+            path = Path(folder) / "sales.csv"
+            data.to_csv(path, index=False)
+            result = build(path)
+            self.assertEqual(result["source"]["country"], "All countries")
+            self.assertEqual(result["model"]["productCount"], 2)
+
     def test_accepts_a_single_sheet_workbook_and_reports_missing_columns(self):
         with TemporaryDirectory() as folder:
             workbook = Path(folder) / "sales.xlsx"
@@ -46,8 +56,10 @@ class RuntimeTests(unittest.TestCase):
         thread.start()
         base = f"http://127.0.0.1:{server.server_port}"
         try:
+            with urllib.request.urlopen(base + "/api/health") as response:
+                self.assertEqual(json.load(response)["service"], "stock-demand-prediction")
             request = urllib.request.Request(
-                base + "/api/analyze?" + urllib.parse.urlencode({"name": "sales.csv", "country": "United Kingdom"}),
+                base + "/api/analyze?" + urllib.parse.urlencode({"name": "sales.csv"}),
                 data=transaction_csv(), method="POST",
                 headers={"Content-Type": "application/octet-stream", "Origin": base},
             )
@@ -68,6 +80,7 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(job["result"]["model"]["productCount"], 2)
             self.assertEqual(job["result"]["model"]["testRows"], 24)
             self.assertEqual(job["result"]["source"]["name"], "sales.csv")
+            self.assertEqual(job["result"]["source"]["country"], "All countries")
             for path in ("/analytics/data/online_retail_II.xlsx", "/output/results/uci-reference.json"):
                 with self.assertRaises(urllib.error.HTTPError) as error:
                     urllib.request.urlopen(base + path)

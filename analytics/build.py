@@ -132,7 +132,7 @@ def metrics(actual: np.ndarray, predicted: np.ndarray) -> dict[str, float]:
     }
 
 
-def build(path: Path, *, country: str | None = "United Kingdom", source_name: str | None = None, progress: Progress | None = None) -> dict:
+def build(path: Path, *, country: str = "auto", source_name: str | None = None, progress: Progress | None = None) -> dict:
     def emit(stage: str, status: str, detail: str) -> None:
         if progress:
             progress(stage, status, detail)
@@ -140,10 +140,11 @@ def build(path: Path, *, country: str | None = "United Kingdom", source_name: st
     emit("read", "running", "Checking the file and reading transactions")
     digest = sha256(path)
     official = digest == SHA256
+    selected_country = ("United Kingdom" if official else None) if country == "auto" else country.strip() or None
     raw = read_dataset(path)
     emit("read", "done", f"Read {len(raw):,} transaction rows")
     emit("clean", "running", "Removing cancellations, returns, invalid values and unwanted countries")
-    clean, counts = clean_sales(raw, country=country, strict_codes=official)
+    clean, counts = clean_sales(raw, country=selected_country, strict_codes=official)
     if clean.empty:
         raise ValueError("No valid sales remain after cleaning; check the file and country filter")
     emit("clean", "done", f"Kept {len(clean):,} valid sales")
@@ -198,7 +199,7 @@ def build(path: Path, *, country: str | None = "United Kingdom", source_name: st
         })
     result = {
         "version": 1,
-        "source": {"name": "UCI Online Retail II" if official else (source_name or path.name), "url": SOURCE if official else None, "sha256": digest, "license": "CC BY 4.0" if official else None, "country": country or "All countries", "currency": "GBP" if official else "unspecified"},
+        "source": {"name": "UCI Online Retail II" if official else (source_name or path.name), "url": SOURCE if official else None, "sha256": digest, "license": "CC BY 4.0" if official else None, "country": selected_country or "All countries", "currency": "GBP" if official else "unspecified"},
         "period": {"firstWeek": weeks[0].strftime("%Y-%m-%d"), "lastWeek": weeks[-1].strftime("%Y-%m-%d"), "lastObservedDate": (weeks[-1] + pd.Timedelta(days=6)).strftime("%Y-%m-%d"), "trainingEnd": (cutoff - pd.Timedelta(days=1)).strftime("%Y-%m-%d"), "holdoutStart": cutoff.strftime("%Y-%m-%d"), "holdoutWeeks": HOLDOUT_WEEKS, "illustrativeNextWeek": future_week.strftime("%Y-%m-%d")},
         "cleaning": counts,
         "model": {"name": "Random Forest Regression", "settings": {key: value for key, value in MODEL.items() if key != "n_jobs"}, "features": FEATURES + ["one-hot StockCode"], "trainRows": len(train), "testRows": len(test), "productCount": len(products)},
@@ -213,11 +214,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT, help="Excel or CSV transaction data (default: local UCI workbook)")
     parser.add_argument("--output", type=Path, default=Path("output/results/uci-reference.json"))
-    parser.add_argument("--country", default="United Kingdom", help="Country to keep; use an empty string for all")
+    parser.add_argument("--country", default="auto", help="Country to keep; auto uses UK for the exact UCI workbook and all countries otherwise")
     args = parser.parse_args()
     if not args.input.is_file():
         parser.error(f"Dataset missing: {args.input}")
-    result = build(args.input, country=args.country or None)
+    result = build(args.input, country=args.country)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
     print(f"Wrote {args.output}; model MAE {result['metrics']['model']['mae']}, baseline MAE {result['metrics']['baseline']['mae']}")

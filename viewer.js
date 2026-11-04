@@ -2,9 +2,29 @@ const $ = (id) => document.getElementById(id);
 const number = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 1 });
 let result = null;
 let startedAt = 0;
+let serverReady = false;
+
+const serverHelp = "Analysis server unavailable. From the project folder, run `source analytics/.venv/bin/activate && python server.py`, then open http://127.0.0.1:8000/ and reload.";
 
 function setText(id, value) {
   $(id).textContent = value;
+}
+
+async function checkServer() {
+  try {
+    const response = await fetch("/api/health", { cache: "no-store" });
+    if (!response.ok || (await response.json()).service !== "stock-demand-prediction") {
+      throw new Error("Analysis server unavailable");
+    }
+    serverReady = true;
+    $("server-status").hidden = true;
+    $("analyze-button").disabled = false;
+  } catch {
+    serverReady = false;
+    setText("server-status", serverHelp);
+    $("server-status").hidden = false;
+    $("analyze-button").disabled = true;
+  }
 }
 
 function drawChart(weeks) {
@@ -61,7 +81,7 @@ function showResult(data) {
   result = data;
   setText("study-type", data.source.url ? "UCI Online Retail II" : "Uploaded retail dataset");
   setText("study-title", data.source.name);
-  setText("study-note", `${data.model.productCount} eligible products. The country filter was ${data.source.country}. These results describe the uploaded history, not live shop inventory.`);
+  setText("study-note", `${data.model.productCount} eligible products. Sales included: ${data.source.country}. These results describe the uploaded history, not live shop inventory.`);
   setText("source-name", data.source.name);
   $("source-link").hidden = !data.source.url;
   $("report-link").hidden = !data.source.url;
@@ -123,16 +143,17 @@ async function poll(jobId) {
       window.setTimeout(() => poll(jobId), 700);
     }
   } catch (error) {
-    setText("error", error.message);
+    setText("error", serverHelp);
     $("error").hidden = false;
     $("analyze-button").disabled = false;
+    checkServer();
   }
 }
 
 $("upload-form").addEventListener("submit", async (event) => {
   event.preventDefault();
   const file = $("dataset-file").files[0];
-  if (!file) return;
+  if (!file || !serverReady) return;
   $("content").hidden = true;
   $("progress").hidden = false;
   $("error").hidden = true;
@@ -142,7 +163,7 @@ $("upload-form").addEventListener("submit", async (event) => {
   setText("elapsed", "0s elapsed");
   setText("progress-summary", `Uploading ${file.name}…`);
   try {
-    const query = new URLSearchParams({ name: file.name, country: $("country").value });
+    const query = new URLSearchParams({ name: file.name });
     const response = await fetch(`/api/analyze?${query}`, {
       method: "POST",
       headers: { "Content-Type": "application/octet-stream" },
@@ -153,11 +174,14 @@ $("upload-form").addEventListener("submit", async (event) => {
     poll(payload.id);
   } catch (error) {
     setText("progress-summary", "Upload stopped.");
-    setText("error", error.message);
+    setText("error", error instanceof TypeError ? serverHelp : error.message);
     $("error").hidden = false;
     $("analyze-button").disabled = false;
+    if (error instanceof TypeError) checkServer();
   }
 });
+
+checkServer();
 
 $("product-select").addEventListener("change", showProduct);
 $("download-button").addEventListener("click", () => {

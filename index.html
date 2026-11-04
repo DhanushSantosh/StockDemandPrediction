@@ -11,7 +11,6 @@
   <body>
     <main class="shell">
       <header class="hero">
-        <p class="eyebrow">Statistics & Data Analytics · Activity 2</p>
         <h1>Stock Demand Prediction</h1>
         <p>Upload retail transactions, watch each analysis stage, then explore measured weekly sales predictions.</p>
       </header>
@@ -23,11 +22,9 @@
           <label class="file-picker">Dataset file
             <input id="dataset-file" type="file" accept=".xlsx,.csv" required />
           </label>
-          <label class="country-picker">Keep sales from country
-            <input id="country" type="text" value="United Kingdom" placeholder="Leave blank for all countries" />
-          </label>
-          <button id="analyze-button" type="submit">Run analysis</button>
+          <button id="analyze-button" type="submit" disabled>Run analysis</button>
         </form>
+        <p id="server-status" class="error" role="alert">Connecting to the analysis server…</p>
         <p class="footnote">Requires at least 32 complete weeks and a product with 20 sales weeks before the final 12-week test. Maximum file size: 64 MB. Processing runs on this computer; the raw upload is deleted after analysis.</p>
         <a href="https://archive.ics.uci.edu/dataset/502/online+retail+ii" target="_blank" rel="noopener noreferrer">Download UCI Online Retail II ↗</a>
       </section>

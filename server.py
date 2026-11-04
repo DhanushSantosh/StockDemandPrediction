@@ -44,9 +44,9 @@ def update_job(job: dict, stage: str, status: str, detail: str) -> None:
         step.update(status=status, detail=detail)
 
 
-def process(job: dict, path: Path, name: str, country: str | None) -> None:
+def process(job: dict, path: Path, name: str) -> None:
     try:
-        result = build(path, country=country, source_name=name,
+        result = build(path, source_name=name,
                        progress=lambda stage, status, detail: update_job(job, stage, status, detail))
         with job_lock:
             job["result"] = result
@@ -78,6 +78,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = urlsplit(self.path).path
+        if path == "/api/health":
+            self.json_response(200, {"service": "stock-demand-prediction"})
+            return
         if path.startswith("/api/jobs/"):
             job_id = path.removeprefix("/api/jobs/")
             with job_lock:
@@ -106,7 +109,6 @@ class Handler(BaseHTTPRequestHandler):
             return
         params = parse_qs(urlsplit(self.path).query, keep_blank_values=True)
         name = Path(params.get("name", [""])[0]).name[:120]
-        country = params.get("country", ["United Kingdom"])[0].strip() or None
         if Path(name).suffix.lower() not in (".xlsx", ".csv"):
             self.json_response(400, {"error": "Choose an .xlsx workbook or .csv file"})
             return
@@ -151,7 +153,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         with job_lock:
             job["status"] = "running"
-        threading.Thread(target=process, args=(job, path, name, country), daemon=True).start()
+        threading.Thread(target=process, args=(job, path, name), daemon=True).start()
         self.json_response(202, {"id": job["id"]})
 
 

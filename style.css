@@ -15,9 +15,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .panel { padding: 24px; margin-bottom: 16px; }
 .upload { margin-top: 24px; }
 .upload h2 { margin-bottom: 8px; }
-.upload form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(190px, 240px) auto; align-items: end; gap: 12px; margin-top: 22px; }
-.file-picker, .country-picker { display: grid; gap: 6px; font-size: .84rem; font-weight: 700; color: #52627a; }
-.file-picker input, .country-picker input { min-height: 45px; width: 100%; border: 1px solid #becbdd; border-radius: 10px; background: #fff; color: #15233a; padding: 9px 12px; }
+.upload form { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 12px; margin-top: 22px; }
+.file-picker { display: grid; gap: 6px; font-size: .84rem; font-weight: 700; color: #52627a; }
+.file-picker input { min-height: 45px; width: 100%; border: 1px solid #becbdd; border-radius: 10px; background: #fff; color: #15233a; padding: 9px 12px; }
 .file-picker input { padding: 6px; }
 .file-picker input::file-selector-button { border: 0; border-radius: 7px; padding: 7px 10px; margin-right: 12px; background: #e6eef8; color: #1c4c83; font-weight: 700; cursor: pointer; }
 #analyze-button { min-height: 45px; padding: 9px 18px; border: 0; border-radius: 10px; background: #1d5fa8; color: #fff; font-weight: 700; }

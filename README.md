@@ -60,7 +60,7 @@ Raw files and the Python environment are ignored by Git.
 
 ## Reproduce the submitted UCI study
 
-The included [SDA report](docs/sda/report.md) and [PDF](output/pdf/StockDemandPrediction-SDA-Report.pdf) document the UCI source, cleaning counts, chronological split, model, baseline, measured metrics, figures, and limits. Its reference result is [uci-reference.json](output/results/uci-reference.json). These fixed artifacts document the UCI experiment; the browser does not load them as an upload result.
+The included [SDA report](docs/sda/report.md) and [PDF](output/pdf/StockDemandPrediction-SDA-Report.pdf) document the UCI source, cleaning counts, chronological split, model, baseline, measured metrics, figures, and limits. The PDF remains a repository file and is not served by the web app. Its reference result is [uci-reference.json](output/results/uci-reference.json). These fixed artifacts document the UCI experiment; the browser does not load them as an upload result.
 
 ```bash
 analytics/.venv/bin/python analytics/build.py

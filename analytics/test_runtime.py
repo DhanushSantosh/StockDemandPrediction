@@ -81,7 +81,7 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(job["result"]["model"]["testRows"], 24)
             self.assertEqual(job["result"]["source"]["name"], "sales.csv")
             self.assertEqual(job["result"]["source"]["country"], "All countries")
-            for path in ("/analytics/data/online_retail_II.xlsx", "/output/results/uci-reference.json"):
+            for path in ("/analytics/data/online_retail_II.xlsx", "/output/results/uci-reference.json", "/output/pdf/StockDemandPrediction-SDA-Report.pdf"):
                 with self.assertRaises(urllib.error.HTTPError) as error:
                     urllib.request.urlopen(base + path)
                 self.assertEqual(error.exception.code, 404)

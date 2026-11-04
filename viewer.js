@@ -84,7 +84,6 @@ function showResult(data) {
   setText("study-note", `${data.model.productCount} eligible products. Sales included: ${data.source.country}. These results describe the uploaded history, not live shop inventory.`);
   setText("source-name", data.source.name);
   $("source-link").hidden = !data.source.url;
-  $("report-link").hidden = !data.source.url;
   if (data.source.url) $("source-link").href = data.source.url;
   setText("period", `${data.period.firstWeek} to ${data.period.lastObservedDate}`);
   setText("model-mae", number.format(data.metrics.model.mae));

@@ -68,8 +68,7 @@ th:first-child, td:first-child { text-align: left; }
 th { color: #52627a; font-size: .84rem; }
 .footnote { color: #52627a; font-size: .87rem; margin: 14px 0 0; }
 .method p { margin: 8px 0; }
-.method a { display: inline-block; margin-top: 12px; }
-.download { display: inline-block; margin: 12px 0 0 14px; padding: 9px 12px; border: 1px solid #cbd6e5; border-radius: 9px; background: #fff; color: #215eaa; font-weight: 700; }
+.download { display: inline-block; margin: 12px 0 0; padding: 9px 12px; border: 1px solid #cbd6e5; border-radius: 9px; background: #fff; color: #215eaa; font-weight: 700; }
 footer { color: #65758b; text-align: center; font-size: .85rem; padding-top: 8px; }
 [hidden] { display: none !important; }
 @media (max-width: 760px) {

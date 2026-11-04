@@ -29,10 +29,6 @@ STATIC = {
     "/index.html": ("index.html", "text/html; charset=utf-8"),
     "/viewer.js": ("viewer.js", "text/javascript; charset=utf-8"),
     "/style.css": ("style.css", "text/css; charset=utf-8"),
-    "/output/pdf/StockDemandPrediction-SDA-Report.pdf": (
-        "output/pdf/StockDemandPrediction-SDA-Report.pdf",
-        "application/pdf",
-    ),
 }
 job_lock = threading.Lock()
 current_job: dict | None = None
